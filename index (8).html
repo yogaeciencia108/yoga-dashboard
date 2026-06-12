@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dashboard · Yoga & Ciência</title>
+<style>
+/* ── TOKENS ── */
+:root {
+  --bg:      #0b0d12;
+  --surface: #111318;
+  --card:    #161920;
+  --border:  #1f2330;
+  --accent:  #7c6af7;
+  --green:   #4ec9a0;
+  --orange:  #f07d50;
+  --yellow:  #f0b732;
+  --muted:   #52596e;
+  --sub:     #8a90a6;
+  --text:    #e4e6f0;
+  --r: 10px; --rs: 6px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  position:fixed;left:0;top:0;bottom:0;width:210px;
+  background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;padding:20px 0;z-index:100
+}
+.logo{padding:0 20px 24px;display:flex;align-items:center;gap:10px}
+.logo-mark{
+  width:34px;height:34px;border-radius:9px;
+  background:linear-gradient(135deg,var(--accent),var(--green));
+  display:flex;align-items:center;justify-content:center;font-size:16px
+}
+.logo-text{font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--sub)}
+.nav-section{padding:14px 20px 5px;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.nav-item{
+  display:flex;align-items:center;gap:9px;padding:10px 20px;
+  cursor:pointer;font-size:.84rem;color:var(--sub);
+  border-left:3px solid transparent;transition:all .15s;user-select:none
+}
+.nav-item:hover{background:var(--card);color:var(--text)}
+.nav-item.active{background:var(--card);color:var(--text);border-left-color:var(--accent)}
+.nav-bottom{margin-top:auto;padding:12px 20px}
+.pulse{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:6px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── MAIN ── */
+.main{margin-left:210px;padding:24px 28px;min-height:100vh}
+
+/* ── TOPBAR ── */
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;gap:12px;flex-wrap:wrap}
+.page-title h1{font-size:1.25rem;font-weight:800}
+.page-title p{font-size:.78rem;color:var(--sub);margin-top:2px}
+.topbar-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* ── FILTER BAR ── */
+.filters{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);padding:12px 16px;
+  display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap
+}
+.f-label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+select,input[type=date],input[type=text]{
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--text);border-radius:var(--rs);padding:6px 10px;
+  font-size:.8rem;outline:none;transition:border-color .15s;font-family:inherit
+}
+select:focus,input:focus{border-color:var(--accent)}
+select option{background:var(--surface)}
+.spacer{flex:1}
+
+/* ── BUTTONS ── */
+.btn{
+  padding:7px 14px;border-radius:var(--rs);font-size:.8rem;
+  font-weight:600;cursor:pointer;border:none;
+  transition:opacity .15s,transform .1s;font-family:inherit;
+  display:inline-flex;align-items:center;gap:5px
+}
+.btn:hover{opacity:.82}.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--sub)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn-warn{background:var(--yellow);color:#000}
+.btn-sm{padding:5px 10px;font-size:.75rem}
+
+/* ── KPI GRID ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(165px,1fr));gap:14px;margin-bottom:20px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;position:relative;overflow:hidden}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi.c1::after{background:var(--accent)}
+.kpi.c2::after{background:var(--green)}
+.kpi.c3::after{background:var(--orange)}
+.kpi.c4::after{background:var(--yellow)}
+.kpi-lbl{font-size:.68rem;color:var(--sub);text-transform:uppercase;letter-spacing:.08em}
+.kpi-val{font-size:1.6rem;font-weight:800;margin:5px 0 3px;line-height:1}
+.kpi-sub{font-size:.72rem;color:var(--muted)}
+
+/* ── PANELS ── */
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:18px}
+.panel-hd{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.panel-title{font-size:.88rem;font-weight:700;display:flex;align-items:center;gap:7px}
+.panel-bd{padding:18px}
+
+/* ── TABLE ── */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+thead th{
+  padding:9px 12px;text-align:left;font-size:.67rem;
+  color:var(--muted);font-weight:600;text-transform:uppercase;
+  letter-spacing:.07em;border-bottom:1px solid var(--border);
+  white-space:nowrap;cursor:pointer;user-select:none
+}
+thead th:hover{color:var(--sub)}
+thead th.sorted{color:var(--accent)}
+tbody tr{border-bottom:1px solid rgba(31,35,48,.7);transition:background .1s}
+tbody tr:hover{background:rgba(124,106,247,.04)}
+tbody td{padding:10px 12px;color:var(--sub);vertical-align:middle}
+td.strong{color:var(--text);font-weight:600}
+.empty-row td{text-align:center;padding:44px;color:var(--muted);font-size:.84rem}
+
+/* ── CHIPS ── */
+.chip{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:.7rem;font-weight:600}
+.cp-pix   {background:rgba(78,201,160,.13);color:var(--green)}
+.cp-card  {background:rgba(124,106,247,.13);color:var(--accent)}
+.cp-billet{background:rgba(240,183,50,.13);color:var(--yellow)}
+.cp-org   {background:rgba(78,201,160,.13);color:var(--green)}
+.cp-paid  {background:rgba(124,106,247,.13);color:var(--accent)}
+.cp-dir   {background:rgba(82,89,110,.18);color:var(--muted)}
+.cp-live  {background:rgba(240,80,60,.13);color:#f06050}
+.cp-ok    {background:rgba(78,201,160,.13);color:var(--green)}
+.cp-paused{background:rgba(240,183,50,.13);color:var(--yellow)}
+.cp-dup   {background:rgba(240,80,60,.15);color:var(--orange);border:1px solid rgba(240,80,60,.3)}
+
+/* ── GRID 2 ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+@media(max-width:860px){.g2{grid-template-columns:1fr}}
+
+/* ── ALERT ── */
+.alert{border-radius:var(--rs);padding:9px 14px;font-size:.8rem;margin-bottom:14px;display:flex;align-items:flex-start;gap:8px}
+.a-warn{background:rgba(240,183,50,.1);border:1px solid rgba(240,183,50,.25);color:var(--yellow)}
+.a-err {background:rgba(240,80,60,.1);border:1px solid rgba(240,80,60,.25);color:var(--orange)}
+.a-ok  {background:rgba(78,201,160,.1);border:1px solid rgba(78,201,160,.25);color:var(--green)}
+.a-info{background:rgba(124,106,247,.1);border:1px solid rgba(124,106,247,.25);color:var(--accent)}
+
+/* ── MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(3px)}
+.overlay.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:26px;max-width:520px;width:92%;max-height:88vh;overflow-y:auto}
+.modal h2{font-size:1rem;margin-bottom:14px}
+.modal-foot{margin-top:18px;display:flex;justify-content:flex-end;gap:8px}
+
+/* ── PROGRESS ── */
+.pbar{background:var(--border);border-radius:4px;height:5px;overflow:hidden;margin-top:4px}
+.pfill{height:100%;border-radius:4px;transition:width .5s}
+
+/* ── LOADER ── */
+.loader{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .65s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── PAGES ── */
+.page{display:none}.page.active{display:block}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:20px;right:20px;background:#1a1e2a;color:var(--text);border:1px solid var(--border);padding:9px 16px;border-radius:var(--rs);font-size:.8rem;z-index:999;transition:opacity .3s;pointer-events:none;max-width:300px;box-shadow:0 4px 20px rgba(0,0,0,.5)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:720px){
+  .sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}
+  .main{margin-left:0;padding:14px}
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="logo">
+    <div class="logo-mark">🧘</div>
+    <div class="logo-text">Yoga &amp; Ciência</div>
+  </div>
+
+  <div class="nav-section">Painel</div>
+  <div class="nav-item active" data-page="overview">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    Visão Geral
+  </div>
+
+  <div class="nav-section">Hotmart</div>
+  <div class="nav-item" data-page="vendas">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    Vendas
+  </div>
+  <div class="nav-item" data-page="origens">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    Origens / SRC
+  </div>
+
+  <div class="nav-section">Meta Ads</div>
+  <div class="nav-item" data-page="meta">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+    Campanhas
+  </div>
+
+  <div class="nav-bottom">
+    <div style="font-size:.73rem;color:var(--sub)" id="liveStatus">
+      <span class="pulse"></span>Webhook ativo
+    </div>
+    <div style="font-size:.68rem;color:var(--muted);margin-top:5px" id="lastSync">—</div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- ░ VISÃO GERAL ░ -->
+  <div class="page active" id="page-overview">
+    <div class="topbar">
+      <div class="page-title"><h1>Visão Geral</h1><p id="syncLabel">Carregando…</p></div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" onclick="loadAll()">↻ Atualizar</button>
+      </div>
+    </div>
+    <div class="filters">
+      <span class="f-label">Período</span>
+      <input type="date" id="gS"/><span style="color:var(--muted)">→</span><input type="date" id="gE"/>
+      <button class="btn btn-ghost btn-sm" onclick="qr(30)">30d</button>
+      <button class="btn btn-ghost btn-sm" onclick="qr(60)">60d</button>
+      <button class="btn btn-ghost btn-sm" onclick="qr(0)">Mês atual</button>
+      <div class="spacer"></div>
+      <span id="ovDupChip" class="chip cp-dup" style="display:none">⚠ Duplicatas removidas</span>
+    </div>
+    <div class="kpi-grid" id="ovKpis"></div>
+    <div class="g2">
+      <div class="panel">
+        <div class="panel-hd"><span class="panel-title">📈 Receita diária</span></div>
+        <div class="panel-bd"><canvas id="chartRevenue" height="110"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-hd"><span class="panel-title">🎯 Vendas por origem</span></div>
+        <div class="panel-bd"><canvas id="chartSrc" height="110"></canvas></div>
+      </div>
+    </div>
+    <div class="g2">
+      <div class="panel">
+        <div class="panel-hd"><span class="panel-title">🏆 Top campanhas por ROAS</span></div>
+        <div class="panel-bd" id="topCamps"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-hd"><span class="panel-title">🔔 Alertas</span></div>
+        <div class="panel-bd" id="alertsBox"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ░ VENDAS ░ -->
+  <div class="page" id="page-vendas">
+    <div class="topbar">
+      <div class="page-title"><h1>Vendas Hotmart</h1><p>Histórico + tempo real</p></div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ CSV</button>
+        <button class="btn btn-primary btn-sm" onclick="renderVendas()">↻ Atualizar</button>
+      </div>
+    </div>
+    <div id="dupBanner" class="alert a-warn" style="display:none">
+      ⚠ <strong id="dupN">0</strong> transações duplicadas foram removidas automaticamente.
+      <a href="#" onclick="toggleDups(event)" style="color:inherit;text-decoration:underline;margin-left:6px" id="dupToggleLink">Mostrar</a>
+    </div>
+    <div class="filters">
+      <span class="f-label">Filtros</span>
+      <input type="date" id="vS"/><span style="color:var(--muted)">→</span><input type="date" id="vE"/>
+      <select id="vPag">
+        <option value="">Pagamento: todos</option>
+        <option value="PIX">PIX</option>
+        <option value="CREDIT_CARD">Cartão</option>
+        <option value="BILLET">Boleto</option>
+      </select>
+      <select id="vOrg">
+        <option value="">Origem: todas</option>
+        <option value="organic">Orgânico</option>
+        <option value="paid">Pago</option>
+        <option value="direct">Direto</option>
+      </select>
+      <input type="text" id="vBusca" placeholder="Email, HP…" style="min-width:160px"/>
+      <div class="spacer"></div>
+      <button class="btn btn-primary btn-sm" onclick="applyVF()">Aplicar</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearVF()">Limpar</button>
+    </div>
+    <div class="kpi-grid" id="vKpis"></div>
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">Transações</span>
+        <span id="vCount" style="font-size:.77rem;color:var(--sub)"></span>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th onclick="sortV('data')">Data</th>
+            <th onclick="sortV('produto')">Produto</th>
+            <th onclick="sortV('valor')">Valor</th>
+            <th>Pagamento</th>
+            <th onclick="sortV('origem')">Origem / SRC</th>
+            <th>ID Transação</th>
+            <th>Comprador</th>
+            <th>Fonte</th>
+          </tr></thead>
+          <tbody id="vBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ░ ORIGENS ░ -->
+  <div class="page" id="page-origens">
+    <div class="topbar">
+      <div class="page-title"><h1>Origens / SRC</h1><p>Receita por parâmetro de rastreio</p></div>
+    </div>
+    <div class="kpi-grid" id="srcKpis"></div>
+    <div class="panel">
+      <div class="panel-hd"><span class="panel-title">Receita por SRC</span></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>SRC / Parâmetro</th><th>Tipo</th>
+            <th class="text-right">Vendas</th><th class="text-right">Receita</th>
+            <th class="text-right">Ticket médio</th><th class="text-right">% total</th>
+          </tr></thead>
+          <tbody id="srcBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ░ META ADS ░ -->
+  <div class="page" id="page-meta">
+    <div class="topbar">
+      <div class="page-title"><h1>Meta Ads</h1><p>Campanhas via Adveronix</p></div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" onclick="exportMetaCSV()">⬇ CSV</button>
+        <button class="btn btn-primary btn-sm" onclick="renderMeta()">↻ Atualizar</button>
+      </div>
+    </div>
+    <div id="pixelBanner" class="alert a-err" style="display:none">
+      🚨 Possível <strong>pixel duplicado</strong> detectado. Campanhas marcadas com ⚠ têm ROAS muito acima da média — verifique se o evento de compra não está disparando 2×.
+    </div>
+    <div class="filters">
+      <span class="f-label">Filtros</span>
+      <input type="date" id="mS"/><span style="color:var(--muted)">→</span><input type="date" id="mE"/>
+      <select id="mPerf">
+        <option value="">Performance: todas</option>
+        <option value="high">ROAS &gt; 3</option>
+        <option value="mid">ROAS 1–3</option>
+        <option value="low">ROAS &lt; 1</option>
+      </select>
+      <input type="text" id="mBusca" placeholder="Nome da campanha…" style="min-width:180px"/>
+      <div class="spacer"></div>
+      <button class="btn btn-primary btn-sm" onclick="applyMF()">Aplicar</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearMF()">Limpar</button>
+    </div>
+    <div class="kpi-grid" id="mKpis"></div>
+    <div class="panel">
+      <div class="panel-hd">
+        <span class="panel-title">Campanhas</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="mCount" style="font-size:.77rem;color:var(--sub)"></span>
+          <button class="btn btn-warn btn-sm" onclick="pausarSelecionadas()">⏸ Pausar selecionadas</button>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th><input type="checkbox" id="chkAll" onchange="selAll(this)"/></th>
+            <th onclick="sortM('campanha')">Campanha</th>
+            <th onclick="sortM('gasto')">Gasto</th>
+            <th onclick="sortM('receita')">Receita</th>
+            <th onclick="sortM('roas')">ROAS</th>
+            <th onclick="sortM('cpl')">CPL</th>
+            <th onclick="sortM('ctr')">CTR</th>
+            <th>Leads</th>
+            <th>Status</th>
+            <th>Ação</th>
+          </tr></thead>
+          <tbody id="mBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- MODAL DEDUP -->
+<div class="overlay" id="mDup">
+  <div class="modal">
+    <h2>Transações duplicadas removidas</h2>
+    <div id="mDupBody"></div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeM('mDup')">Fechar</button></div>
+  </div>
+</div>
+
+<!-- MODAL PAUSAR -->
+<div class="overlay" id="mPause">
+  <div class="modal">
+    <h2>⏸ Confirmar pausa</h2>
+    <p style="font-size:.82rem;color:var(--sub);margin-bottom:12px">As campanhas abaixo serão marcadas como pausadas neste dashboard:</p>
+    <div id="mPauseBody"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeM('mPause')">Cancelar</button>
+      <button class="btn btn-warn" onclick="confirmPause()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" style="opacity:0"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  CONFIGURAÇÃO — substitua apenas a URL do Apps Script
+// ════════════════════════════════════════════════════════════
+
+// URL do seu Apps Script publicado como Web App
+// Após publicar o Code.gs, copie a URL aqui:
+const API_URL = "https://script.google.com/macros/s/AKfycbyvE06-6XtPb3ultXojmjFktrn5zaoWS8W90vm3eSCUvwGAlAMVVRvw3JOaoj0EupnyiQ/exec";
+
+// ════════════════════════════════════════════════════════════
+//  MAPA DE COLUNAS — Histórico (aba Report) e Webhook (aba Vendas)
+//  Baseado nos 19 campos definidos
+// ════════════════════════════════════════════════════════════
+const COL = {
+  DATA:         0,   // A - Data
+  COD_PRODUTO:  1,   // B - Código do Produto
+  NOME_PRODUTO: 2,   // C - Nome do Produto
+  MOEDA_COMPRA: 3,   // D - Moeda de Compra
+  VALOR_TOTAL:  4,   // E - Valor Total da Compra
+  VALOR_COMPRA: 5,   // F - Valor da Compra
+  TAXA_CONV:    6,   // G - Taxa de Conversão
+  MOEDA_REC:    7,   // H - Moeda de Recebimento
+  FAT_LIQ:      8,   // I - Faturamento Líquido
+  FAT_BRUTO:    9,   // J - Faturamento Bruto
+  PAGAMENTO:   10,   // K - Método de Pagamento
+  QTDE:        11,   // L - Quantidade
+  PAIS:        12,   // M - País
+  PRECO_CONV:  13,   // N - Preço Total Convertido
+  TAXA_CAMBIO: 14,   // O - Taxa de Câmbio
+  ORIGEM:      15,   // P - Origem
+  TRANSACAO:   16,   // Q - ID da Transação
+  EMAIL:       17,   // R - Email do Comprador
+  NOME_COMP:   18,   // S - Nome do Comprador
+};
+
+// Mapa de colunas Meta Ads (Adveronix — ajuste se necessário)
+// O script detecta automaticamente pelos nomes, mas estes são os fallbacks
+const META_COL_NAMES = {
+  data:      ["data","date"],
+  campanha:  ["nome da campanha","campanha","campaign name","campaign_name"],
+  gasto:     ["valor gasto","amount spent","gasto","spend"],
+  receita:   ["compras","purchase value","receita","purchases"],
+  leads:     ["leads","cadastros","lead"],
+  cliques:   ["cliques","clicks"],
+  impress:   ["impressões","impressoes","impressions"],
+  ctr:       ["ctr"],
+  conjunto:  ["nome do conjunto","ad set name","conjunto"],
+  criativo:  ["nome do anúncio","ad name","criativo"],
+};
+
+// ════════════════════════════════════════════════════════════
+//  ESTADO
+// ════════════════════════════════════════════════════════════
+const S = {
+  vendas:         [],   // todas as vendas (já deduplicadas)
+  vendasFiltradas:[],
+  meta:           [],
+  metaFiltrada:   [],
+  dups:           [],   // linhas removidas por duplicata
+  showDups:       false,
+  sortV: { col:'data',   asc:false },
+  sortM: { col:'roas',   asc:false },
+  gS: null, gE: null,
+};
+
+// ════════════════════════════════════════════════════════════
+//  API
+// ════════════════════════════════════════════════════════════
+async function apiFetch(action) {
+  const url = API_URL + "?action=" + action + "&t=" + Date.now();
+  const res  = await fetch(url);
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const json = await res.json();
+  if (json.status !== "ok") throw new Error(json.message || "Erro na API");
+  return json.data || [];
+}
+
+// ════════════════════════════════════════════════════════════
+//  LOAD
+// ════════════════════════════════════════════════════════════
+async function loadAll() {
+  toast("⏳ Sincronizando dados…");
+  try {
+    const [vendasRaw, metaRaw] = await Promise.all([
+      apiFetch("vendas"),
+      apiFetch("meta")
+    ]);
+    processVendas(vendasRaw);
+    processMeta(metaRaw);
+    renderOverview();
+    renderVendas();
+    renderMeta();
+    renderOrigens();
+    const now = new Date().toLocaleString("pt-BR");
+    document.getElementById("lastSync").textContent = "Sync: " + now;
+    document.getElementById("syncLabel").textContent = "Atualizado: " + now;
+    toast("✅ Dados carregados");
+  } catch(e) {
+    toast("❌ Erro: " + e.message);
+    console.error(e);
+    // Mostra instruções de configuração
+    document.getElementById("syncLabel").textContent = "Configure a URL do Apps Script no código";
+    renderEmpty();
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  PROCESSAR VENDAS
+// ════════════════════════════════════════════════════════════
+function processVendas(raw) {
+  // raw = [{linha:[...19 campos], fonte:"historico"|"webhook"}, ...]
+  S.vendas = raw.map(item => {
+    const l = item.linha;
+    const data  = parseDate(l[COL.DATA]);
+    const valor = parseMoney(l[COL.VALOR_TOTAL]);
+    const orig  = classifyOrigin(String(l[COL.ORIGEM] || ""));
+    return {
+      data,
+      dataStr:  l[COL.DATA] || "",
+      produto:  String(l[COL.NOME_PRODUTO] || ""),
+      valor,
+      pagamento:String(l[COL.PAGAMENTO]    || "").toUpperCase(),
+      origem:   String(l[COL.ORIGEM]       || ""),
+      origType: orig.type,
+      origLabel:orig.label,
+      transacao:String(l[COL.TRANSACAO]    || "").toUpperCase().trim(),
+      email:    String(l[COL.EMAIL]        || ""),
+      comprador:String(l[COL.NOME_COMP]    || ""),
+      fatLiq:   parseMoney(l[COL.FAT_LIQ]),
+      fonte:    item.fonte,
+    };
+  });
+  S.vendasFiltradas = [...S.vendas];
+  // Dups já foram tratadas no Apps Script, mas registra para exibir
+  S.dups = [];
+  const seen = new Set();
+  const limpos = [];
+  S.vendas.forEach(v => {
+    if (v.transacao && seen.has(v.transacao)) { S.dups.push(v); }
+    else { if (v.transacao) seen.add(v.transacao); limpos.push(v); }
+  });
+  S.vendas = limpos;
+  S.vendasFiltradas = [...limpos];
+
+  if (S.dups.length > 0) {
+    document.getElementById("dupBanner").style.display = "";
+    document.getElementById("dupN").textContent = S.dups.length;
+    document.getElementById("ovDupChip").style.display = "";
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  PROCESSAR META
+// ════════════════════════════════════════════════════════════
+function processMeta(raw) {
+  if (!raw.length) { S.meta = []; S.metaFiltrada = []; return; }
+
+  // Detecta índice de cada coluna pelo nome do cabeçalho
+  // O Apps Script retorna linhas sem cabeçalho — precisamos
+  // ler a primeira linha da planilha para mapear
+  // Mapeamento real da planilha Adveronix (ordem das colunas):
+  // Campaign Name | Ad Set Name | Ad Name | Amount Spent | Reach | Impressions |
+  // Frequency | CPM | Link Clicks | Landing Page Views | Leads | Adds to Cart |
+  // Checkouts Initiated | Purchases | Purchases Conversion Value | Day
+  const IDX = {
+    campanha: 0,   // Campaign Name
+    conjunto: 1,   // Ad Set Name
+    criativo: 2,   // Ad Name
+    gasto:    3,   // Amount Spent
+    impress:  5,   // Impressions
+    cliques:  8,   // Link Clicks
+    leads:    10,  // Leads
+    receita:  14,  // Purchases Conversion Value
+    data:     16, // Day (coluna real da data; índice 15 tem bug de hora do Sheets)
+  };
+
+  const mapa = new Map();
+  raw.forEach(item => {
+    const l = item.linha;
+    const camp = normalizeStr(String(l[IDX.campanha] || ""));
+    if (!camp) return;
+    const gasto   = parseMoney(l[IDX.gasto]);
+    const receita = parseMoney(l[IDX.receita]);
+    const leads   = parseInt(l[IDX.leads])   || 0;
+    const cliques = parseInt(l[IDX.cliques]) || 0;
+    const impress = parseInt(l[IDX.impress]) || 0;
+
+    if (!mapa.has(camp)) {
+      mapa.set(camp, { campanha:camp, gasto, receita, leads, cliques, impress, status:"active", pixelDup:false });
+    } else {
+      const e = mapa.get(camp);
+      e.gasto   += gasto;
+      e.receita += receita;
+      e.leads   += leads;
+      e.cliques += cliques;
+      e.impress += impress;
+    }
+  });
+
+  S.meta = Array.from(mapa.values()).map(c => {
+    c.roas = c.gasto > 0 ? c.receita / c.gasto : 0;
+    c.cpl  = c.leads   > 0 ? c.gasto / c.leads   : 0;
+    c.ctr  = c.impress > 0 ? (c.cliques / c.impress) * 100 : 0;
+    c.cpc  = c.cliques > 0 ? c.gasto / c.cliques  : 0;
+    return c;
+  });
+
+  // Detecta pixel duplicado
+  const roasVals = S.meta.map(c => c.roas).filter(r => r > 0 && r < 50).sort((a,b)=>a-b);
+  if (roasVals.length > 2) {
+    const mediana = roasVals[Math.floor(roasVals.length/2)];
+    const limiar  = Math.max(mediana * 3, 8);
+    let hasPixelDup = false;
+    S.meta.forEach(c => {
+      if (c.roas > limiar) { c.pixelDup = true; hasPixelDup = true; }
+    });
+    document.getElementById("pixelBanner").style.display = hasPixelDup ? "" : "none";
+  }
+
+  S.metaFiltrada = [...S.meta];
+}
+
+// ════════════════════════════════════════════════════════════
+//  RENDER OVERVIEW
+// ════════════════════════════════════════════════════════════
+function renderOverview() {
+  const vendas = filterByGlobalDate(S.vendas);
+  const meta   = S.meta;
+
+  const receita = vendas.reduce((s,v)=>s+v.valor,0);
+  const gasto   = meta.reduce((s,c)=>s+c.gasto,0);
+  const roas    = gasto > 0 ? receita/gasto : 0;
+  const leads   = meta.reduce((s,c)=>s+c.leads,0);
+  const organic = vendas.filter(v=>v.origType==="organic").length;
+
+  document.getElementById("ovKpis").innerHTML =
+    kpi("Receita total",  fBRL(receita), "todas as vendas", "c1") +
+    kpi("Gasto Meta",     fBRL(gasto),   "tráfego pago",    "c3") +
+    kpi("ROAS geral",     roas.toFixed(2)+"×", "", roas>=3?"c2":"c1") +
+    kpi("Vendas únicas",  vendas.length, "após deduplicação","c2") +
+    kpi("Leads (Meta)",   fNum(leads),   "",                "c4") +
+    kpi("Orgânico",       organic,       "vendas s/ tráfego","c2");
+
+  // Top campanhas
+  const top = [...S.meta].filter(c=>!c.pixelDup).sort((a,b)=>b.roas-a.roas).slice(0,5);
+  document.getElementById("topCamps").innerHTML = top.length ? top.map((c,i)=>`
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:11px">
+      <span style="font-size:.72rem;color:var(--muted);width:12px">${i+1}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.8rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cap(c.campanha)}</div>
+        <div class="pbar"><div class="pfill" style="width:${Math.min((c.roas/10)*100,100)}%;background:var(--green)"></div></div>
+      </div>
+      <span style="font-size:.8rem;font-weight:700;color:var(--green)">${c.roas.toFixed(1)}×</span>
+    </div>`).join("") : '<p style="color:var(--muted);font-size:.82rem">Sem campanhas.</p>';
+
+  // Alertas
+  const alerts = [];
+  if (S.dups.length)
+    alerts.push({t:"warn", m:`${S.dups.length} duplicata(s) removidas da contagem de vendas.`});
+  const pDup = S.meta.filter(c=>c.pixelDup);
+  if (pDup.length)
+    alerts.push({t:"err", m:`Pixel duplicado suspeito em: ${pDup.map(c=>cap(c.campanha)).join(", ")}`});
+  const low = S.meta.filter(c=>c.roas<1&&c.gasto>0);
+  if (low.length)
+    alerts.push({t:"warn", m:`${low.length} campanha(s) com ROAS < 1 — considere pausar.`});
+  if (!alerts.length)
+    alerts.push({t:"ok", m:"Tudo certo! Nenhuma anomalia detectada."});
+
+  document.getElementById("alertsBox").innerHTML = alerts.map(a=>
+    `<div class="alert a-${a.t}">${a.t==="err"?"🚨":a.t==="warn"?"⚠":"✅"} ${a.m}</div>`
+  ).join("");
+
+  drawRevChart(vendas);
+  drawSrcChart(vendas);
+}
+
+// ════════════════════════════════════════════════════════════
+//  RENDER VENDAS
+// ════════════════════════════════════════════════════════════
+function renderVendas() {
+  const rows = S.vendasFiltradas;
+  const total= rows.reduce((s,v)=>s+v.valor,0);
+  const org  = rows.filter(v=>v.origType==="organic").length;
+  const paid = rows.filter(v=>v.origType==="paid").length;
+
+  document.getElementById("vKpis").innerHTML =
+    kpi("Receita", fBRL(total), "", "c1") +
+    kpi("Vendas",  rows.length, "transações", "c2") +
+    kpi("Ticket médio", rows.length?fBRL(total/rows.length):"—","","c3") +
+    kpi("Orgânico", org, "vendas","c2") +
+    kpi("Pago", paid, "vendas","c1");
+
+  document.getElementById("vCount").textContent = rows.length + " registros";
+
+  const body = document.getElementById("vBody");
+  if (!rows.length) {
+    body.innerHTML = `<tr class="empty-row"><td colspan="8">Nenhuma venda. Verifique a configuração da API.</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = rows.map(v => {
+    const pm = v.pagamento;
+    const pc = pm.includes("PIX")?"cp-pix":pm.includes("CREDIT")?"cp-card":pm.includes("BILLET")||pm.includes("BOLETO")?"cp-billet":"cp-dir";
+    const oc = v.origType==="organic"?"cp-org":v.origType==="paid"?"cp-paid":"cp-dir";
+    const src= v.origLabel.length>28?v.origLabel.slice(0,26)+"…":v.origLabel;
+    const fc = v.fonte==="webhook"
+      ? `<span class="chip cp-live">🔴 Live</span>`
+      : `<span style="font-size:.7rem;color:var(--muted)">Sheets</span>`;
+    return `<tr>
+      <td>${fDate(v.data)}</td>
+      <td class="strong">${v.produto||"—"}</td>
+      <td class="strong">${fBRL(v.valor)}</td>
+      <td><span class="chip ${pc}">${pm||"—"}</span></td>
+      <td><span class="chip ${oc}" title="${v.origem}">${src||"direct"}</span></td>
+      <td style="font-family:monospace;font-size:.73rem">${v.transacao||"—"}</td>
+      <td>${v.comprador||"—"}${v.email?`<br><span style="font-size:.7rem;color:var(--muted)">${v.email}</span>`:""}</td>
+      <td>${fc}</td>
+    </tr>`;
+  }).join("");
+}
+
+// ════════════════════════════════════════════════════════════
+//  RENDER ORIGENS
+// ════════════════════════════════════════════════════════════
+function renderOrigens() {
+  const rows  = S.vendas;
+  const total = rows.reduce((s,v)=>s+v.valor,0);
+  const mapa  = {};
+  rows.forEach(v=>{
+    const k = v.origLabel||"direct";
+    if (!mapa[k]) mapa[k]={label:k,type:v.origType,cnt:0,rev:0};
+    mapa[k].cnt++; mapa[k].rev+=v.valor;
+  });
+  const sorted=Object.values(mapa).sort((a,b)=>b.rev-a.rev);
+  const org=sorted.filter(s=>s.type==="organic").reduce((s,r)=>s+r.rev,0);
+  const paid=sorted.filter(s=>s.type==="paid").reduce((s,r)=>s+r.rev,0);
+
+  document.getElementById("srcKpis").innerHTML=
+    kpi("Orgânico", fBRL(org),  total?((org/total)*100).toFixed(1)+"%":"","c2")+
+    kpi("Pago",     fBRL(paid), total?((paid/total)*100).toFixed(1)+"%":"","c1")+
+    kpi("SRCs únicos",Object.keys(mapa).length,"","c4");
+
+  document.getElementById("srcBody").innerHTML = sorted.length
+    ? sorted.map(s=>`<tr>
+        <td class="strong" style="font-family:monospace;font-size:.78rem">${s.label}</td>
+        <td><span class="chip ${s.type==="organic"?"cp-org":s.type==="paid"?"cp-paid":"cp-dir"}">${s.type==="organic"?"Orgânico":s.type==="paid"?"Pago":"Direto"}</span></td>
+        <td class="text-right">${s.cnt}</td>
+        <td class="text-right strong">${fBRL(s.rev)}</td>
+        <td class="text-right">${s.cnt?fBRL(s.rev/s.cnt):"—"}</td>
+        <td class="text-right">${total?((s.rev/total)*100).toFixed(1)+"%":"—"}</td>
+      </tr>`).join("")
+    : `<tr class="empty-row"><td colspan="6">Sem dados de origem.</td></tr>`;
+}
+
+// ════════════════════════════════════════════════════════════
+//  RENDER META
+// ════════════════════════════════════════════════════════════
+function renderMeta() {
+  const rows=S.metaFiltrada;
+  const gasto  =rows.reduce((s,c)=>s+c.gasto,0);
+  const receita=rows.reduce((s,c)=>s+c.receita,0);
+  const leads  =rows.reduce((s,c)=>s+c.leads,0);
+  const roas   =gasto>0?receita/gasto:0;
+  const cpl    =leads>0?gasto/leads:0;
+
+  document.getElementById("mKpis").innerHTML=
+    kpi("Gasto",    fBRL(gasto),   "","c3")+
+    kpi("Receita Meta", fBRL(receita),"pixel pode inflar","c2")+
+    kpi("ROAS",     roas.toFixed(2)+"×","",roas>=3?"c2":roas>=1?"c1":"c3")+
+    kpi("Leads",    fNum(leads),   "","c1")+
+    kpi("CPL",      cpl>0?fBRL(cpl):"—","","c4");
+
+  document.getElementById("mCount").textContent=rows.length+" campanhas";
+
+  document.getElementById("mBody").innerHTML = rows.length
+    ? rows.map((c,i)=>{
+        const rc=c.roas>=3?"var(--green)":c.roas>=1?"var(--yellow)":"var(--orange)";
+        const dup=c.pixelDup?`<span class="chip cp-dup" title="ROAS suspeito — cheque pixel duplicado">⚠ Pixel?</span>`:"";
+        const st=c.status==="active"?`<span class="chip cp-ok">Ativo</span>`:`<span class="chip cp-paused">Pausado</span>`;
+        return `<tr>
+          <td><input type="checkbox" class="mchk" data-i="${i}"/></td>
+          <td class="strong">${cap(c.campanha)}${dup?"<br>"+dup:""}</td>
+          <td>${fBRL(c.gasto)}</td>
+          <td>${fBRL(c.receita)}</td>
+          <td style="color:${rc};font-weight:700">${c.roas.toFixed(2)}×</td>
+          <td>${c.cpl>0?fBRL(c.cpl):"—"}</td>
+          <td>${c.ctr>0?c.ctr.toFixed(2)+"%":"—"}</td>
+          <td>${fNum(c.leads)}</td>
+          <td>${st}</td>
+          <td><button class="btn btn-warn btn-sm" onclick="pausar(${i})" ${c.status==="paused"?"disabled":""}">⏸</button></td>
+        </tr>`;
+      }).join("")
+    : `<tr class="empty-row"><td colspan="10">Sem campanhas.</td></tr>`;
+}
+
+function renderEmpty() {
+  ["vBody","mBody","srcBody"].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.innerHTML=`<tr class="empty-row"><td colspan="10">Configure a URL do Apps Script.</td></tr>`;
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  FILTROS
+// ════════════════════════════════════════════════════════════
+function qr(days){
+  const e=new Date(), s=new Date(e);
+  if(days===0) s.setDate(1);
+  else s.setDate(s.getDate()-days);
+  document.getElementById("gS").value=s.toISOString().split("T")[0];
+  document.getElementById("gE").value=e.toISOString().split("T")[0];
+  S.gS=s; S.gE=new Date(e.toDateString()+" 23:59:59");
+  renderOverview();
+}
+
+function filterByGlobalDate(arr){
+  if(!S.gS&&!S.gE) return arr;
+  return arr.filter(v=>{
+    if(!v.data) return false;
+    if(S.gS&&v.data<S.gS) return false;
+    if(S.gE&&v.data>S.gE) return false;
+    return true;
+  });
+}
+
+function applyVF(){
+  const s=document.getElementById("vS").value;
+  const e=document.getElementById("vE").value;
+  const pag=document.getElementById("vPag").value;
+  const org=document.getElementById("vOrg").value;
+  const q=document.getElementById("vBusca").value.toLowerCase();
+  S.vendasFiltradas=S.vendas.filter(v=>{
+    if(s&&v.data&&v.data<new Date(s)) return false;
+    if(e&&v.data&&v.data>new Date(e+"T23:59:59")) return false;
+    if(pag&&!v.pagamento.includes(pag)) return false;
+    if(org&&v.origType!==org) return false;
+    if(q&&!JSON.stringify(v).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  renderVendas();
+}
+
+function clearVF(){
+  ["vS","vE"].forEach(id=>document.getElementById(id).value="");
+  document.getElementById("vPag").value="";
+  document.getElementById("vOrg").value="";
+  document.getElementById("vBusca").value="";
+  S.vendasFiltradas=[...S.vendas];
+  renderVendas();
+}
+
+function applyMF(){
+  const perf=document.getElementById("mPerf").value;
+  const q=document.getElementById("mBusca").value.toLowerCase();
+  S.metaFiltrada=S.meta.filter(c=>{
+    if(perf==="high"&&c.roas<=3) return false;
+    if(perf==="mid"&&(c.roas<1||c.roas>3)) return false;
+    if(perf==="low"&&c.roas>=1) return false;
+    if(q&&!c.campanha.includes(q)) return false;
+    return true;
+  });
+  renderMeta();
+}
+
+function clearMF(){
+  document.getElementById("mPerf").value="";
+  document.getElementById("mBusca").value="";
+  S.metaFiltrada=[...S.meta];
+  renderMeta();
+}
+
+// ════════════════════════════════════════════════════════════
+//  SORT
+// ════════════════════════════════════════════════════════════
+function sortV(col){
+  const ss=S.sortV; ss.asc=ss.col===col?!ss.asc:true; ss.col=col;
+  S.vendasFiltradas.sort((a,b)=>cmp(a[col],b[col],ss.asc));
+  renderVendas();
+}
+function sortM(col){
+  const ss=S.sortM; ss.asc=ss.col===col?!ss.asc:true; ss.col=col;
+  S.metaFiltrada.sort((a,b)=>cmp(a[col],b[col],ss.asc));
+  renderMeta();
+}
+function cmp(a,b,asc){
+  const na=parseFloat(String(a).replace(",",".")), nb=parseFloat(String(b).replace(",","."));
+  if(!isNaN(na)&&!isNaN(nb)) return asc?na-nb:nb-na;
+  return asc?String(a).localeCompare(String(b)):String(b).localeCompare(String(a));
+}
+
+// ════════════════════════════════════════════════════════════
+//  AÇÕES
+// ════════════════════════════════════════════════════════════
+function toggleDups(evt){
+  evt.preventDefault();
+  S.showDups=!S.showDups;
+  document.getElementById("dupToggleLink").textContent=S.showDups?"Ocultar":"Mostrar";
+  if(S.showDups){
+    document.getElementById("mDupBody").innerHTML=S.dups.length
+      ?`<div class="tbl-wrap"><table>
+          <thead><tr><th>ID Transação</th><th>Data</th><th>Valor</th><th>Fonte</th></tr></thead>
+          <tbody>${S.dups.map(d=>`<tr>
+            <td style="font-family:monospace;font-size:.73rem">${d.transacao}</td>
+            <td>${fDate(d.data)}</td><td>${fBRL(d.valor)}</td>
+            <td>${d.fonte}</td>
+          </tr>`).join("")}</tbody>
+        </table></div>`
+      :"<p style='color:var(--muted)'>Nenhuma duplicata.</p>";
+    document.getElementById("mDup").classList.add("open");
+  }
+}
+
+function pausar(i){
+  S.metaFiltrada[i].status="paused";
+  const camp=S.metaFiltrada[i].campanha;
+  const ri=S.meta.findIndex(c=>c.campanha===camp);
+  if(ri>=0) S.meta[ri].status="paused";
+  renderMeta();
+  toast("⏸ Pausado: "+cap(camp));
+}
+
+function selAll(el){ document.querySelectorAll(".mchk").forEach(c=>c.checked=el.checked); }
+
+function pausarSelecionadas(){
+  const sel=[...document.querySelectorAll(".mchk:checked")].map(c=>parseInt(c.dataset.i));
+  if(!sel.length){toast("Selecione campanhas primeiro.");return;}
+  document.getElementById("mPauseBody").innerHTML=
+    "<ul style='margin:0 0 0 16px;font-size:.83rem'>"+
+    sel.map(i=>`<li>${cap(S.metaFiltrada[i].campanha)}</li>`).join("")+"</ul>";
+  document.getElementById("mPause").classList.add("open");
+}
+
+function confirmPause(){
+  const sel=[...document.querySelectorAll(".mchk:checked")].map(c=>parseInt(c.dataset.i));
+  sel.forEach(i=>pausar(i));
+  closeM("mPause");
+}
+
+function closeM(id){ document.getElementById(id).classList.remove("open"); }
+
+function exportCSV(){
+  const rows=S.vendasFiltradas;
+  if(!rows.length){toast("Sem dados.");return;}
+  const h=["Data","Produto","Valor","Pagamento","Origem","Transação","Email","Comprador","Fonte"];
+  const csv=[h.join(","),...rows.map(v=>[fDate(v.data),v.produto,v.valor,v.pagamento,v.origem,v.transacao,v.email,v.comprador,v.fonte].map(f=>`"${String(f||"").replace(/"/g,'""')}"`).join(","))].join("\n");
+  dlCSV(csv,"vendas_hotmart");
+}
+
+function exportMetaCSV(){
+  const rows=S.metaFiltrada;
+  if(!rows.length){toast("Sem dados.");return;}
+  const h=["Campanha","Gasto","Receita","ROAS","CPL","CTR","Leads","Status"];
+  const csv=[h.join(","),...rows.map(c=>[c.campanha,c.gasto,c.receita,c.roas.toFixed(2),c.cpl.toFixed(2),c.ctr.toFixed(2),c.leads,c.status].join(","))].join("\n");
+  dlCSV(csv,"meta_campanhas");
+}
+
+function dlCSV(csv,name){
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8;"}));
+  a.download=name+"_"+new Date().toISOString().split("T")[0]+".csv";
+  a.click(); URL.revokeObjectURL(a.href);
+  toast("⬇ CSV exportado");
+}
+
+// ════════════════════════════════════════════════════════════
+//  CANVAS CHARTS
+// ════════════════════════════════════════════════════════════
+function drawRevChart(vendas){
+  const c=document.getElementById("chartRevenue");
+  if(!c) return;
+  const ctx=c.getContext("2d");
+  c.width=c.offsetWidth||380; c.height=110;
+  const bkts={};
+  for(let i=29;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);bkts[d.toISOString().split("T")[0]]=0;}
+  vendas.forEach(v=>{if(!v.data)return;const k=v.data.toISOString().split("T")[0];if(k in bkts)bkts[k]+=v.valor;});
+  const vals=Object.values(bkts), max=Math.max(...vals,1);
+  const w=c.width,h=c.height,pL=4,pR=4,pT=6,pB=6;
+  ctx.clearRect(0,0,w,h);
+  vals.forEach((v,i)=>{
+    const bw=(w-pL-pR)/vals.length-1;
+    const x=pL+i*((w-pL-pR)/vals.length);
+    const bh=(v/max)*(h-pT-pB);
+    const y=h-pB-bh;
+    const g=ctx.createLinearGradient(0,y,0,h);
+    g.addColorStop(0,"#7c6af7"); g.addColorStop(1,"rgba(124,106,247,.08)");
+    ctx.fillStyle=g;
+    ctx.beginPath(); ctx.roundRect(x,y,Math.max(bw,2),bh,3); ctx.fill();
+  });
+}
+
+function drawSrcChart(vendas){
+  const c=document.getElementById("chartSrc");
+  if(!c) return;
+  const ctx=c.getContext("2d");
+  c.width=c.offsetWidth||300; c.height=110;
+  let org=0,paid=0,dir=0;
+  vendas.forEach(v=>{
+    if(v.origType==="organic")org+=v.valor;
+    else if(v.origType==="paid")paid+=v.valor;
+    else dir+=v.valor;
+  });
+  const total=org+paid+dir||1;
+  const slices=[{l:"Orgânico",v:org,c:"#4ec9a0"},{l:"Pago",v:paid,c:"#7c6af7"},{l:"Direto",v:dir,c:"#52596e"}].filter(s=>s.v>0);
+  const cx=c.width/2-16,cy=c.height/2,r=Math.min(cx,cy)-8;
+  let start=-Math.PI/2;
+  ctx.clearRect(0,0,c.width,c.height);
+  slices.forEach(s=>{
+    const angle=(s.v/total)*Math.PI*2;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,start,start+angle); ctx.closePath();
+    ctx.fillStyle=s.c; ctx.fill(); start+=angle;
+  });
+  ctx.beginPath(); ctx.arc(cx,cy,r*.54,0,Math.PI*2); ctx.fillStyle="#161920"; ctx.fill();
+  const lx=c.width-95, ly=14;
+  slices.forEach((s,i)=>{
+    ctx.fillStyle=s.c; ctx.fillRect(lx,ly+i*20,9,9);
+    ctx.fillStyle="#8a90a6"; ctx.font="10px Inter,system-ui";
+    ctx.fillText(`${s.l}: ${((s.v/total)*100).toFixed(0)}%`,lx+13,ly+i*20+9);
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  UTILIDADES
+// ════════════════════════════════════════════════════════════
+function parseDate(v){
+  if(!v) return null;
+  const s=String(v).trim();
+  if(/^\d{13}$/.test(s)) return new Date(Number(s));
+  if(/^\d{10}$/.test(s)) return new Date(Number(s)*1000);
+  const br=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(br) return new Date(`${br[3]}-${br[2].padStart(2,"0")}-${br[1].padStart(2,"0")}`);
+  const d=new Date(s); return isNaN(d.getTime())?null:d;
+}
+function parseMoney(v){
+  const s=String(v||"").replace(/[R$\s]/g,"").replace(/\./g,"").replace(",",".");
+  const n=parseFloat(s); return isNaN(n)?0:n;
+}
+function fBRL(v){ return new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(v||0); }
+function fDate(d){ return d?d.toLocaleDateString("pt-BR"):"—"; }
+function fNum(v){ return v>=1e6?(v/1e6).toFixed(1)+"M":v>=1e3?(v/1e3).toFixed(1)+"k":String(Math.round(v||0)); }
+function cap(s){ return s?s.charAt(0).toUpperCase()+s.slice(1):s; }
+function normalizeStr(s){ return s.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g," "); }
+
+function classifyOrigin(raw){
+  const s=raw.toLowerCase().trim();
+  if(!s||s==="direct"||s==="direto") return {label:"direct",type:"direct"};
+  if(s.includes("organic")||s.includes("organico")||s.includes("bio")||s.includes("whatsapp")||s.includes("email"))
+    return {label:raw,type:"organic"};
+  const paid=["fb","ig","instagram","facebook","meta","google","yt","youtube","campanha","ads","paid","src="];
+  if(paid.some(p=>s.includes(p))) return {label:raw,type:"paid"};
+  return {label:raw,type:"paid"}; // SRC preenchido = assume pago
+}
+
+function kpi(lbl,val,sub,cls){
+  return `<div class="kpi ${cls}"><div class="kpi-lbl">${lbl}</div><div class="kpi-val">${val}</div>${sub?`<div class="kpi-sub">${sub}</div>`:""}</div>`;
+}
+
+let toastT;
+function toast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.style.opacity="1";
+  clearTimeout(toastT); toastT=setTimeout(()=>t.style.opacity="0",3200);
+}
+
+// ════════════════════════════════════════════════════════════
+//  NAVEGAÇÃO
+// ════════════════════════════════════════════════════════════
+document.querySelectorAll(".nav-item").forEach(el=>{
+  el.addEventListener("click",()=>{
+    const page=el.dataset.page;
+    document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+    document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));
+    document.getElementById("page-"+page).classList.add("active");
+    el.classList.add("active");
+  });
+});
+
+window.addEventListener("resize",()=>{
+  drawRevChart(filterByGlobalDate(S.vendas));
+  drawSrcChart(filterByGlobalDate(S.vendas));
+});
+
+// ════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════
+(function init(){
+  qr(30); // padrão: últimos 30 dias
+  if(API_URL.includes("SEU_DEPLOYMENT_ID")){
+    document.getElementById("syncLabel").textContent="⚠ Configure API_URL no código antes de publicar";
+    toast("⚠ Substitua API_URL pelo ID do seu Apps Script publicado");
+    renderEmpty();
+    return;
+  }
+  loadAll();
+})();
+</script>
+</body>
+</html>
