@@ -378,6 +378,12 @@ td.strong{color:var(--text);font-weight:600}
       <select id="vProd">
         <option value="">Produto: todos</option>
       </select>
+      <select id="vMoedaVis" onchange="renderVendas()" style="font-size:.8rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);padding:6px 10px">
+        <option value="brl">💵 Mostrar em BRL</option>
+        <option value="usd">🇺🇸 Mostrar em USD</option>
+        <option value="conv">🔄 BRL + USD convertido</option>
+      </select>
+      <input type="text" id="vCotacao" placeholder="Cotação USD (ex: 5.75)" style="min-width:140px;display:none"/>
       <input type="text" id="vBusca" placeholder="Email, HP…" style="min-width:160px"/>
       <div class="spacer"></div>
       <button class="btn btn-primary btn-sm" onclick="applyVF()">Aplicar</button>
@@ -957,57 +963,62 @@ function processVendas(raw) {
     // Valores
     const valorBrutoBruto = isHist ? parseMoney(l[c.PRECO_TOTAL_CONV]) : parseMoney(l[c.VALOR_TOTAL]);
 
-    let liquidoHotmart;
+    // ── Moeda da compra (webhook) ─────────────────────────────
+    // Col D = moeda de compra (BRL ou USD)
+    // Col G = taxa de conversão moeda→BRL
+    // Col I = faturamento líquido NA MOEDA DA COL D (BRL se BRL, USD se USD)
+    // Col J = faturamento bruto NA MOEDA DA COL D (idem)
+    const moedaCompraWh = !isHist ? String(l[3]||"").toUpperCase().trim() : "BRL";
+    const taxaConvWh    = !isHist ? (parseMoney(l[6]) || 1) : 1;
+    const isUSD         = !isHist && moedaCompraWh === "USD";
+
+    let liquidoHotmart;    // sempre em BRL (para cálculos internos)
+    let liquidoUSD = 0;    // valor líquido em USD (para exibição separada)
+    let liquidoBRL = 0;    // valor líquido em BRL puro
+
     if (isHist) {
       liquidoHotmart = parseMoney(l[c.VALOR_RECEBIDO_CONV]);
       if (!liquidoHotmart) {
-        const fatLiq    = parseMoney(l[c.FAT_LIQUIDO]);
-        const moedaRec  = String(l[c.MOEDA_REC] || "").toUpperCase().trim();
-        const taxaRec   = parseMoney(l[c.TAXA_CAMBIO_REC]) || 1;
-        liquidoHotmart  = (moedaRec && moedaRec !== "BRL") ? fatLiq * taxaRec : fatLiq;
+        const fatLiq   = parseMoney(l[c.FAT_LIQUIDO]);
+        const moedaRec = String(l[c.MOEDA_REC] || "").toUpperCase().trim();
+        const taxaRec  = parseMoney(l[c.TAXA_CAMBIO_REC]) || 1;
+        liquidoHotmart = (moedaRec && moedaRec !== "BRL") ? fatLiq * taxaRec : fatLiq;
       }
+      liquidoBRL = liquidoHotmart;
     } else {
-      // Webhook: col8=FAT_LIQ (sempre em BRL), col14=taxa_cambio
-      // Para moeda estrangeira a taxa pode vir como 1 (bug Hotmart),
-      // mas col8 já é o valor convertido em BRL — usar diretamente.
-      const fatLiqWh = parseMoney(l[c.FAT_LIQ]);
-      const taxaWh   = parseMoney(l[c.TAXA_CAMBIO]) || 1;
-      const moedaWh  = String(l[c.MOEDA_REC]||"").toUpperCase().trim();
-      // Se moeda de recebimento é BRL ou taxa é 1, usa fatLiq direto
-      liquidoHotmart = (moedaWh === "BRL" || taxaWh === 1)
-        ? fatLiqWh
-        : fatLiqWh * taxaWh;
+      const fatLiqWh = parseMoney(l[c.FAT_LIQ]); // col I — na moeda da col D
+      if (isUSD) {
+        liquidoUSD     = fatLiqWh;                       // guarda em USD original
+        liquidoHotmart = fatLiqWh * taxaConvWh;          // converte para BRL (taxa col G)
+        liquidoBRL     = 0;                              // não é venda BRL
+      } else {
+        liquidoBRL     = fatLiqWh;
+        liquidoHotmart = fatLiqWh;
+        liquidoUSD     = 0;
+      }
     }
 
-    // Valor bruto — tanto no histórico (col 44) quanto no webhook (col 4/9),
-    // transações de Argentina, Colômbia e México chegam com o valor em moeda
-    // local (pesos) sem conversão para BRL, gerando valores absurdos.
-    // Detectamos pelo ratio bruto/líquido > 5× e usamos o líquido como base.
-    // CORREÇÃO ADICIONAL: quando a moeda de compra não é BRL (ex: USD),
-    // o valorBrutoBruto do webhook vem na moeda original e precisa ser
-    // multiplicado pela taxa de câmbio para virar BRL.
+    // ── Valor bruto ───────────────────────────────────────────
+    // Col J (índice 9) = faturamento bruto na moeda da col D
+    // Para USD: converte pela taxa col G
+    // Para BRL: usa direto
     let valorBruto;
     if (!isHist) {
-      const moedaCompraWh = String(l[3]||"").toUpperCase().trim(); // col D: Moeda de Compra
-      const taxaConvWh    = parseMoney(l[6]) || 1;                 // col G: Taxa de Conversão
-      if (moedaCompraWh && moedaCompraWh !== "BRL" && taxaConvWh > 1) {
-        // Converte o bruto da moeda original para BRL usando a taxa de conversão
-        valorBruto = valorBrutoBruto * taxaConvWh;
-      } else if (liquidoHotmart > 0 && valorBrutoBruto > liquidoHotmart * 5) {
-        console.warn("⚠️ Valor absurdo detectado (webhook) — corrigindo:", {
-          transacao: String(l[c.TRANSACAO]||""), brutoOriginal: valorBrutoBruto,
-          liquidoReal: liquidoHotmart, ratio: (valorBrutoBruto/liquidoHotmart).toFixed(0)+"×"
-        });
-        valorBruto = liquidoHotmart / 0.84;
+      const fatBrutoWh = parseMoney(l[9]); // col J — na moeda da col D
+      if (isUSD && taxaConvWh > 1) {
+        // Converte bruto USD → BRL pela taxa de conversão
+        const brutoBRL = fatBrutoWh * taxaConvWh;
+        // Sanity check: bruto convertido não deve ser muito maior que o líquido convertido
+        valorBruto = (brutoBRL > 0 && liquidoHotmart > 0 && brutoBRL / liquidoHotmart <= 2.5)
+          ? brutoBRL
+          : liquidoHotmart / 0.84;
       } else {
-        valorBruto = valorBrutoBruto;
+        // BRL — usa col J diretamente
+        valorBruto = (fatBrutoWh > 0 && fatBrutoWh / liquidoHotmart <= 2.5)
+          ? fatBrutoWh
+          : liquidoHotmart / 0.84;
       }
     } else if (liquidoHotmart > 0 && valorBrutoBruto > liquidoHotmart * 5) {
-      console.warn("⚠️ Valor absurdo detectado (histórico) — corrigindo:", {
-        produto: String(l[c.NOME_PRODUTO]||"").substring(0,30),
-        transacao: String(l[c.TRANSACAO]||""), brutoOriginal: valorBrutoBruto,
-        liquidoReal: liquidoHotmart, ratio: (valorBrutoBruto/liquidoHotmart).toFixed(0)+"×"
-      });
       valorBruto = liquidoHotmart / 0.84;
     } else {
       valorBruto = valorBrutoBruto;
@@ -1021,8 +1032,12 @@ function processVendas(raw) {
       dataStr:  String(isHist ? l[c.DATA_CONF] : l[c.DATA] || ""),
       produto:  String(l[c.NOME_PRODUTO] || ""),
       valor:        valorBruto,          // bruto convertido (BRL)
-      liquidoHotmart,                    // líquido informado pela Hotmart (BRL)
+      liquidoHotmart,                    // líquido em BRL (convertido se USD)
       liquidoContabil,                   // líquido após -6% imposto sobre serviço
+      liquidoUSD,                        // líquido em USD original (0 se venda BRL)
+      liquidoBRL,                        // líquido em BRL puro (0 se venda USD)
+      moeda: moedaCompraWh || "BRL",     // moeda da compra (BRL ou USD)
+      taxaConv: taxaConvWh || 1,         // taxa de conversão usada
       pagamento:String(l[c.PAGAMENTO] || "").toUpperCase(),
       origem:   String(origemRaw || ""),
       origType: orig.type,               // organic | paid | pretrack
@@ -1498,21 +1513,47 @@ function renderTopCreatives(vendas){
 // ════════════════════════════════════════════════════════════
 function renderVendas() {
   const rows = S.vendasFiltradas;
-  const total   = rows.reduce((s,v)=>s+v.valor,0);
-  const liqHot  = rows.reduce((s,v)=>s+v.liquidoHotmart,0);
-  const liqCont = rows.reduce((s,v)=>s+v.liquidoContabil,0);
+  const moedaVis = document.getElementById("vMoedaVis")?.value || "brl";
+  const cotacaoEl = document.getElementById("vCotacao");
+
+  // Mostra/esconde campo de cotação
+  if(cotacaoEl) cotacaoEl.style.display = moedaVis === "conv" ? "" : "none";
+  const cotacao = parseFloat((cotacaoEl?.value||"5.75").replace(",",".")) || 5.75;
+
+  // Calcula totais por moeda
+  const totalBRL    = rows.reduce((s,v)=>s+(v.liquidoBRL||0),0);
+  const totalUSD    = rows.reduce((s,v)=>s+(v.liquidoUSD||0),0);
+  const totalConv   = totalBRL + totalUSD * cotacao;
+  const totalBruto  = rows.reduce((s,v)=>s+v.valor,0);
+  const liqCont     = rows.reduce((s,v)=>s+v.liquidoContabil,0);
   const org   = rows.filter(v=>v.origType==="organic").length;
   const paid  = rows.filter(v=>v.origType==="paid").length;
   const pretk = rows.filter(v=>v.origType==="pretrack").length;
+  const vendBRL = rows.filter(v=>v.moeda==="BRL"||!v.moeda).length;
+  const vendUSD = rows.filter(v=>v.moeda==="USD").length;
+
+  let receitaLabel, receitaVal, liqLabel, liqVal;
+  if(moedaVis === "usd"){
+    receitaLabel = "Receita USD"; receitaVal = `$${totalUSD.toFixed(2)}`;
+    liqLabel = "Líquido USD"; liqVal = `$${totalUSD.toFixed(2)}`;
+  } else if(moedaVis === "conv"){
+    receitaLabel = `Total convertido (USD×${cotacao.toFixed(2)})`;
+    receitaVal = fBRL(totalConv);
+    liqLabel = "Líquido contábil total"; liqVal = fBRL(liqCont + totalUSD*cotacao*0.94);
+  } else {
+    receitaLabel = "Receita BRL"; receitaVal = fBRL(totalBRL);
+    liqLabel = "Líquido Contábil BRL"; liqVal = fBRL(rows.filter(v=>v.moeda==="BRL"||!v.moeda).reduce((s,v)=>s+v.liquidoContabil,0));
+  }
 
   document.getElementById("vKpis").innerHTML =
-    kpi("Receita bruta", fBRL(total), "", "c1") +
-    kpi("Líquido Hotmart", fBRL(liqHot), "antes do imposto", "c2") +
-    kpi("Líquido Contábil", fBRL(liqCont), "−6% imposto serviço", "c3") +
-    kpi("Vendas",  rows.length, "transações", "c2") +
+    kpi(receitaLabel, receitaVal, "", "c1") +
+    (moedaVis==="brl"||moedaVis==="conv" ? kpi("Receita USD", `$${totalUSD.toFixed(2)}`, `${vendUSD} venda${vendUSD!==1?"s":""}`, "c4") : "") +
+    kpi(liqLabel, liqVal, moedaVis==="conv"?`cotação R$${cotacao.toFixed(2)}`:"−6% imposto", "c2") +
+    kpi("Vendas BRL", vendBRL, "transações", "c2") +
+    kpi("Vendas USD", vendUSD, "transações", "c4") +
     kpi("Orgânico", org, "vendas","c2") +
     kpi("Pago", paid, "vendas","c1") +
-    (pretk ? kpi("Pré-rastreio", pretk, "sem SRC (antes 03/02)","c4") : "");
+    (pretk ? kpi("Pré-rastreio", pretk, "sem SRC","c4") : "");
 
   document.getElementById("vCount").textContent = rows.length + " registros";
 
