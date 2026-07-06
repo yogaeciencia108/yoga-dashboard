@@ -977,6 +977,9 @@ function processVendas(raw) {
     let liquidoBRL = 0;    // valor líquido em BRL puro
 
     if (isHist) {
+      // HISTÓRICO: col 49 (VALOR_RECEBIDO_CONV) é SEMPRE em BRL — fonte de verdade.
+      // Col 54 (MOEDA_REC) indica a moeda do mercado (USD para LATAM) mas
+      // o valor já foi convertido para BRL pela Hotmart.
       liquidoHotmart = parseMoney(l[c.VALOR_RECEBIDO_CONV]);
       if (!liquidoHotmart) {
         const fatLiq   = parseMoney(l[c.FAT_LIQUIDO]);
@@ -984,48 +987,40 @@ function processVendas(raw) {
         const taxaRec  = parseMoney(l[c.TAXA_CAMBIO_REC]) || 1;
         liquidoHotmart = (moedaRec && moedaRec !== "BRL") ? fatLiq * taxaRec : fatLiq;
       }
-      liquidoBRL = liquidoHotmart;
-    } else {
-      const fatLiqWh = parseMoney(l[c.FAT_LIQ]); // col I — na moeda da col D
-      if (isUSD) {
-        liquidoUSD     = fatLiqWh;                       // guarda em USD original
-        liquidoHotmart = fatLiqWh * taxaConvWh;          // converte para BRL (taxa col G)
-        liquidoBRL     = 0;                              // não é venda BRL
+      // Classificação de mercado para separação visual BRL/USD
+      const moedaRecHist = String(l[c.MOEDA_REC] || "BRL").toUpperCase().trim();
+      if (moedaRecHist === "USD") {
+        const taxaRecHist = parseMoney(l[c.TAXA_CAMBIO_REC]) || 5.75;
+        liquidoUSD = taxaRecHist > 1 ? liquidoHotmart / taxaRecHist : liquidoHotmart / 5.75;
+        liquidoBRL = 0;
       } else {
-        liquidoBRL     = fatLiqWh;
-        liquidoHotmart = fatLiqWh;
-        liquidoUSD     = 0;
+        liquidoBRL = liquidoHotmart;
+        liquidoUSD = 0;
+      }
+    } else {
+      // WEBHOOK: col I (FAT_LIQ) é sempre o líquido do produtor em BRL
+      // (a Hotmart converte tudo para BRL antes de repassar).
+      // Col D (moeda da compra) é apenas informativo do mercado.
+      const fatLiqWh = parseMoney(l[c.FAT_LIQ]);  // col I — sempre BRL
+      liquidoHotmart = fatLiqWh;
+      liquidoBRL     = fatLiqWh;
+      liquidoUSD     = 0;
+      // Para o seletor de moeda: considera mercado USD apenas se
+      // col D=USD E o comprador não é do Brasil
+      const paisWh = String(l[c.PAIS]||"").toLowerCase();
+      const isMercadoUSD = isUSD && taxaConvWh > 1 && paisWh !== "brasil" && paisWh !== "brazil";
+      if (isMercadoUSD) {
+        liquidoUSD = fatLiqWh / taxaConvWh; // BRL→USD para exibição
+        liquidoBRL = 0;
       }
     }
 
-    // ── Valor bruto ───────────────────────────────────────────
-    // Col J (índice 9) = faturamento bruto na moeda da col D
-    // Para USD: converte pela taxa col G
-    // Para BRL: usa direto
-    let valorBruto;
-    if (!isHist) {
-      const fatBrutoWh = parseMoney(l[9]); // col J — na moeda da col D
-      if (isUSD && taxaConvWh > 1) {
-        // Converte bruto USD → BRL pela taxa de conversão
-        const brutoBRL = fatBrutoWh * taxaConvWh;
-        // Sanity check: bruto convertido não deve ser muito maior que o líquido convertido
-        valorBruto = (brutoBRL > 0 && liquidoHotmart > 0 && brutoBRL / liquidoHotmart <= 2.5)
-          ? brutoBRL
-          : liquidoHotmart / 0.84;
-      } else {
-        // BRL — usa col J diretamente
-        valorBruto = (fatBrutoWh > 0 && fatBrutoWh / liquidoHotmart <= 2.5)
-          ? fatBrutoWh
-          : liquidoHotmart / 0.84;
-      }
-    } else if (liquidoHotmart > 0 && (valorBrutoBruto < liquidoHotmart * 0.5 || valorBrutoBruto > liquidoHotmart * 5)) {
-      // Histórico: col 44 (PRECO_TOTAL_CONV) pode estar em USD para transações LATAM
-      // Se bruto < 50% do líquido → bruto está em USD, não em BRL → usa liq/0.84
-      // Se bruto > 5× o líquido → valor absurdo em moeda local → usa liq/0.84
-      valorBruto = liquidoHotmart / 0.84;
-    } else {
-      valorBruto = valorBrutoBruto;
-    }
+    // Valor bruto — estimado como liquidoHotmart / 0.84 (margem típica Hotmart ~16%).
+    // Isso é mais confiável que tentar converter col E/J/44 pela taxa de câmbio,
+    // pois essas colunas podem conter valores em moeda local (ARS, COP, MXN, EUR)
+    // ou em USD dependendo do método de pagamento e país — sem padrão consistente.
+    // O liquidoHotmart (já em BRL) é a única coluna sempre confiável.
+    const valorBruto = liquidoHotmart > 0 ? liquidoHotmart / 0.84 : 0;
     const liquidoContabil = (data && data >= DATA_INICIO_IMPOSTO_CONTABIL)
       ? liquidoHotmart * (1 - TAXA_IMPOSTO_CONTABIL)
       : liquidoHotmart;
@@ -2614,10 +2609,12 @@ function qr(days){
   const e=new Date(), s=new Date(e);
   if(days===0) s.setDate(1);
   else s.setDate(s.getDate()-days);
-  document.getElementById("gS").value=s.toISOString().split("T")[0];
-  document.getElementById("gE").value=e.toISOString().split("T")[0];
-  S.gS=parseFilterDate(s.toISOString().split("T")[0],false);
-  S.gE=parseFilterDate(e.toISOString().split("T")[0],true);
+  // Usa formatação local (não UTC) para evitar deslocamento de fuso horário
+  const fmt = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  document.getElementById("gS").value=fmt(s);
+  document.getElementById("gE").value=fmt(e);
+  S.gS=parseFilterDate(fmt(s),false);
+  S.gE=parseFilterDate(fmt(e),true);
   renderOverview();
 }
 
@@ -3148,25 +3145,30 @@ function parseDate(v){
   const s=String(v).trim();
   if(/^\d{13}$/.test(s)) return new Date(Number(s));
   if(/^\d{10}$/.test(s)) return new Date(Number(s)*1000);
+  // Formato BR: DD/MM/YYYY — cria meia-noite no horário local (não UTC)
   const br=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if(br) return new Date(Date.UTC(Number(br[3]), Number(br[2])-1, Number(br[1])));
-  // ISO: "YYYY-MM-DD" ou "YYYY-MM-DDTHH:mm:ss..." ou "YYYY-MM-DD HH:mm:ss"
-  // — normaliza sempre para meia-noite UTC daquele dia, evitando que o
-  // fuso horário local "vire o dia" e descarte a linha em filtros de data.
+  if(br) return new Date(Number(br[3]), Number(br[2])-1, Number(br[1]), 0, 0, 0, 0);
+  // ISO com hora: "YYYY-MM-DDTHH:mm:ss.sssZ" — usa o Date nativo que respeita o fuso
+  // ISO sem hora: "YYYY-MM-DD" ou "YYYY-MM-DD HH:mm:ss" — cria meia-noite local
+  const isoFull = s.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+  if(isoFull){
+    // Se termina em Z é UTC — converte para local automaticamente
+    return new Date(s);
+  }
   const iso=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if(iso) return new Date(Date.UTC(Number(iso[1]), Number(iso[2])-1, Number(iso[3])));
+  if(iso) return new Date(Number(iso[1]), Number(iso[2])-1, Number(iso[3]), 0, 0, 0, 0);
   const d=new Date(s); return isNaN(d.getTime())?null:d;
 }
 
-/** Converte string de input[type=date] (YYYY-MM-DD) para Date em UTC,
- *  para comparação consistente com parseDate (que também usa UTC). */
+/** Converte string de input[type=date] (YYYY-MM-DD) para Date local (não UTC),
+ *  para comparação consistente com parseDate que também usa horário local. */
 function parseFilterDate(s, endOfDay){
   if(!s) return null;
   const m=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if(!m) return null;
   return endOfDay
-    ? new Date(Date.UTC(Number(m[1]), Number(m[2])-1, Number(m[3]), 23,59,59,999))
-    : new Date(Date.UTC(Number(m[1]), Number(m[2])-1, Number(m[3])));
+    ? new Date(Number(m[1]), Number(m[2])-1, Number(m[3]), 23, 59, 59, 999)
+    : new Date(Number(m[1]), Number(m[2])-1, Number(m[3]), 0, 0, 0, 0);
 }
 /** Ajusta o canvas para a densidade de pixels da tela (retina/HiDPI),
  *  evitando gráficos borrados. Use: hiDPI(c,ctx,larguraCSS,alturaCSS) */
