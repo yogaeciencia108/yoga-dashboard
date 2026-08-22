@@ -1272,16 +1272,17 @@ function renderOverview() {
   const metaRowsFilt = filterMetaRowsByDate(S.metaRows, S.gS||null, S.gE||null);
   const metaAggMap = new Map();
   metaRowsFilt.forEach(r=>{
-    if(!metaAggMap.has(r.campanha)) metaAggMap.set(r.campanha,{campanha:r.campanha,gasto:0,receita:0,lucro:0,leads:0,compras:0});
+    if(!metaAggMap.has(r.campanha)) metaAggMap.set(r.campanha,{campanha:r.campanha,gasto:0,receita:0,lucro:0,leads:0,compras:0,pixelDup:false});
     const e=metaAggMap.get(r.campanha);
-    e.gasto+=r.gasto||0; e.receita+=r.receita||0; e.lucro+=(r.lucro||0);
+    e.gasto+=r.gasto||0; e.receita+=r.receita||0; e.lucro+=(r.receita||0)-(r.gasto||0);
   });
-  // Herda leads/compras/pixelDup do S.meta (que tem esses campos completos)
-  const meta = S.meta.map(c=>{
-    const agg=metaAggMap.get(c.campanha);
-    if(!agg) return {...c, gasto:0, receita:0, lucro:0};
-    return {...c, gasto:agg.gasto, receita:agg.receita, lucro:agg.lucro};
+  // Herda pixelDup e outros campos não-numéricos do S.meta
+  const metaAgg = [...metaAggMap.values()].map(agg=>{
+    const orig = S.meta.find(c=>c.campanha===agg.campanha)||{};
+    return {...orig, ...agg};
   });
+  // Usa metaAgg (filtrado por data) para todos os cálculos da VG
+  const meta = metaAgg;
 
   const receita       = vendas.reduce((s,v)=>s+v.valor,0);
   const liqHotmart    = vendas.reduce((s,v)=>s+(v.liquidoHotmart||0),0);
