@@ -1100,8 +1100,8 @@ function processMeta(raw) {
     leads:    10,  // Leads
     checkouts:12,  // Checkouts Initiated
     compras:  13,  // Purchases
-    receita:  14,  // Purchases Conversion Value
-    data:     16,  // Day (coluna real da data; índice 15 tem bug de hora do Sheets)
+    receita:  14,  // Purchases Conversion Value — ATENÇÃO: col 14 pode vir como string ISO (bug Sheets)
+    data:     15,  // Day — confirmado col 15 pela inspeção real da planilha
   };
 
   const mapa = new Map();
@@ -1123,7 +1123,9 @@ function processMeta(raw) {
       gasto = gasto * (1 + TAXA_IMPOSTO_META);
     }
 
-    const receita   = parseMoney(l[IDX.receita]);
+    // Col 14 (receita) pode vir como string ISO em alguns exports do Sheets — protege
+    const receitaRaw = l[IDX.receita];
+    const receita = (typeof receitaRaw === 'string' && receitaRaw.includes('T')) ? 0 : parseMoney(receitaRaw);
     const leads     = parseInt(l[IDX.leads])     || 0;
     const cliques   = parseInt(l[IDX.cliques])   || 0;
     const impress   = parseInt(l[IDX.impress])   || 0;
@@ -2743,8 +2745,11 @@ function filterMetaRowsByDate(rows, ds, de){
   if(!ds&&!de) return rows;
   return rows.filter(r=>{
     if(!r.data) return false;
-    if(ds&&r.data<ds) return false;
-    if(de&&r.data>de) return false;
+    // Garante que r.data é um Date object para comparação correta
+    const d = r.data instanceof Date ? r.data : new Date(r.data);
+    if(isNaN(d.getTime())) return false;
+    if(ds&&d<ds) return false;
+    if(de&&d>de) return false;
     return true;
   });
 }
@@ -3119,23 +3124,17 @@ function doLogout(){
 }
 let _warnedNoDate = false;
 function findRowDate(l){
-  let d = parseDate(l[16]);
-  if(d) return d;
-  d = parseDate(l[15]);
-  if(d) return d;
-  // fallback: varre todas as células procurando algo parseável como data
-  for(let i=0;i<l.length;i++){
-    if(i===16||i===15) continue;
-    const v=l[i];
-    if(v==null || v==="") continue;
-    // evita confundir números puros (gasto, impressões etc.) com timestamps de 10/13 dígitos
-    if(typeof v==="number") continue;
-    const parsed=parseDate(v);
-    if(parsed) return parsed;
+  // Col 15 = Day — confirmado como coluna de data real na planilha Meta
+  // Col 14 = Receita — pode vir como string ISO mas com ano inválido (ex: 1904), ignorar
+  for(const i of [15,16,14]){
+    const v = l[i];
+    if(!v) continue;
+    const d = parseDate(v);
+    if(d instanceof Date && !isNaN(d.getTime()) && d.getFullYear()>=2020) return d;
   }
   if(!_warnedNoDate){
     _warnedNoDate=true;
-    console.warn("⚠️ Não foi possível identificar a coluna de data na planilha Meta. Linha de exemplo:", l);
+    console.warn("⚠️ Data não encontrada na linha Meta. Colunas:", l.map((v,i)=>`[${i}]=${v}`).join(", "));
   }
   return null;
 }
